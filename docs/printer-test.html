@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printer Gateway Tester</title>
+    <style>
+        body {
+            font-family: monospace, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 8px;
+            font-family: monospace;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            min-height: 100px;
+            white-space: pre-wrap;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Printer Gateway Tester</h1>
+
+    <div class="input-group">
+        <label for="serverUrl">Gateway URL:</label>
+        <input type="text" id="serverUrl" value="http://127.0.0.1:8686" placeholder="http://127.0.0.1:8686">
+        <div style="margin-top: 5px;"><small>Use '127.0.0.1' if running on the same device, or the IP address if
+                remote.</small></div>
+    </div>
+
+    <div class="input-group">
+        <button onclick="checkHealth()">Test Connection (/health)</button>
+    </div>
+
+    <hr>
+
+    <div class="input-group">
+        <button onclick="downloadLogs()" style="background-color: #6c757d;">Download Debug Logs</button>
+        <div style="margin-top: 5px;"><small>Captures relevant system logs for debugging.</small></div>
+    </div>
+
+    <hr>
+
+    <div class="input-group">
+        <label for="printContent">Content to Print:</label>
+        <textarea id="printContent" rows="5">Hello via Browser!
+
+This is a test print.
+        </textarea>
+    </div>
+
+    <div class="input-group">
+        <button onclick="sendPrint()">Send Raw Print Job (/print)</button>
+    </div>
+
+    <hr>
+
+    <h3>Formatted Receipt Test</h3>
+    <div class="input-group">
+        <label for="orderNum">Order #:</label>
+        <input type="text" id="orderNum" value="101">
+    </div>
+    <div class="input-group">
+        <button onclick="sendOrder()">Send Formatted Order (/print)</button>
+    </div>
+
+    <div id="status">Status: Ready.</div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            console.log(`[${timestamp}] ${message}`);
+
+            let color = 'black';
+            if (type === 'success') color = 'green';
+            if (type === 'error') color = 'red';
+
+            statusDiv.innerHTML = `<span style="color:${color}">[${timestamp}] ${message}</span>\n` + statusDiv.innerHTML;
+        }
+
+        async function checkHealth() {
+            const url = document.getElementById('serverUrl').value + '/health';
+            log(`Checking health at: ${url}...`);
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.ok) {
+                    log(`Health Check Success: ${JSON.stringify(data)}`, 'success');
+                } else {
+                    log(`Health Check Failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`Health Check Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function downloadLogs() {
+            const baseUrl = document.getElementById('serverUrl').value;
+            const url = baseUrl + '/logs';
+
+            log(`Fetching logs from: ${url}...`, 'info');
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch logs: ${response.status}`);
+                }
+
+                const text = await response.text();
+                if (!text) {
+                    log("Logs are empty.", 'error');
+                    return;
+                }
+
+                // Create a blob and trigger download
+                const blob = new Blob([text], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.href = window.URL.createObjectURL(blob);
+                a.download = `printer_server_logs.txt`;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                log("Logs downloaded successfully!", 'success');
+            } catch (error) {
+                log(`Log Download Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function sendPrint() {
+            const baseUrl = document.getElementById('serverUrl').value;
+            const url = baseUrl + '/print';
+            const content = document.getElementById('printContent').value;
+
+            if (!content) {
+                log("Error: Content is empty.", 'error');
+                return;
+            }
+
+            log(`Sending print job to: ${url}...`, 'info');
+            sendRequest(url, { content: content });
+        }
+
+        async function sendOrder() {
+            const baseUrl = document.getElementById('serverUrl').value;
+            const url = baseUrl + '/print';
+            const orderNum = document.getElementById('orderNum').value;
+
+            const orderData = {
+                order: {
+                    orderNumber: orderNum,
+                    total: "45.50",
+                    items: [
+                        { name: "Burger", price: "15.00" },
+                        { name: "Fries", price: "5.50" },
+                        { name: "Soda", price: "25.00" }
+                    ]
+                }
+            };
+
+            log(`Sending formatted order to: ${url}...`, 'info');
+            sendRequest(url, orderData);
+        }
+
+        async function sendRequest(url, payload) {
+            try {
+                const response = await fetch(`${serverUrl}/print`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Api-Key': 'Boons_Secure_Print_Kiosk_2025!'
+                    },
+                    body: JSON.stringify({ content: content })
+                });
+
+                const result = await response.json();
+                document.getElementById('result').innerText = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('result').innerText = 'Error: ' + error.message;
+            }
+        }
+
+        async function sendFormattedOrder() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const order = {
+                orderNumber: "101",
+                total: "25.50",
+                items: [
+                    { name: "Burger", price: "12.00" },
+                    { name: "Fries", price: "5.50" },
+                    { name: "Soda", price: "3.00" },
+                    { name: "Ice Cream", price: "5.00" }
+                ]
+            };
+
+            try {
+                const response = await fetch(`${serverUrl}/print`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Api-Key': 'Boons_Secure_Print_Kiosk_2025!'
+                    },
+                    body: JSON.stringify({ order: order })
+                });
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    data = { error: "Failed to parse JSON response", details: e.message };
+                }
+
+                if (response.ok) {
+                    log(`Success (200): ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    log(`Failed (${response.status}): ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                log(`Network Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>
