@@ -62,6 +62,8 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
         return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found")
     }
 
+    private val MAX_LOG_SIZE = 10 * 1024 * 1024 // 10MB limit
+
     private fun handleLogs(session: IHTTPSession): Response {
         val params = session.parms
         val filter = params["filter"]
@@ -77,6 +79,12 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
             while (reader.readLine().also { line = it } != null) {
                 if (filter.isNullOrEmpty() || line!!.contains(filter, ignoreCase = true)) {
                     logBuilder.append(line).append("\n")
+                    
+                    // Security: Prevent log response from exceeding 10MB
+                    if (logBuilder.length > MAX_LOG_SIZE) {
+                        logBuilder.append("\n[LOGS TRUNCATED - EXCEEDED 10MB LIMIT]\n")
+                        break
+                    }
                 }
             }
             
