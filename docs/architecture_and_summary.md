@@ -1,7 +1,7 @@
-# Nano Printer Gateway: Architecture & Summary
+# Kiosk Print Gateway: Architecture & Summary
 
 ## **Executive Summary**
-We have successfully implemented a standalone **Printer Gateway** within the `Kiosk-Printer` Android application. This feature allows external applications (such as a React Native app or a web browser) to trigger print jobs on a connected POS printer by sending simple HTTP requests to a local server running on the Android device.
+We have successfully implemented a standalone **Printer Gateway** within the `Kiosk Print` Android application. This feature allows external applications (such as a React Native app or a web browser) to trigger print jobs on a connected POS printer by sending simple HTTP requests to a local server running on the Android device.
 
 This solution bypasses the complexities of direct React Native integration by leveraging the existing, robust native Android printer SDK (`POSPrinter`) and exposing it via a standard HTTP interface.
 
@@ -20,7 +20,7 @@ graph TD
     App -->|Get Connection| POS[POSConnect]
     POS -->|Send Commands| Printer[Physical Printer]
     
-    subgraph Android_App ["Kiosk-Printer Android App"]
+    subgraph Android_App ["Kiosk Print Android App"]
         Service[PrinterServerService<br>(Foreground Service)] -->|Lifecycle Management| Server
         Activity[MainActivity] -->|Starts Service &<br>Manages Connection| App
     end
@@ -30,7 +30,7 @@ graph TD
 
 1.  **`PrinterServerService` (Foreground Service)**
     *   **Role**: Manages the lifecycle of the HTTP server.
-    *   **Behavior**: Runs as a foreground service with a persistent notification ("Boons Printer Gateway") to prevent the Android system from killing it.
+    *   **Behavior**: Runs as a foreground service with a persistent notification ("Kiosk Print Gateway") to prevent the Android system from killing it.
     *   **Resilience**: Configured as `START_STICKY`, meaning the system will attempt to recreate it if it is killed.
 
 2.  **`PrinterServer` (NanoHTTPD Implementation)**

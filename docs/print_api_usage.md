@@ -70,7 +70,7 @@ fun getPrintUrl(context: Context): String {
 |-------|--------|-------------|
 | **Date** | **Server (Kiosk)** | Printed date/time is taken from Android system time. |
 | **orderNumber** | Client | Unique order ID. |
-| **headerMessage** | Client | Custom title at top. Defaults to "Boons Kiosk Order". |
+| **headerMessage** | Client | Custom title at top. Defaults to "Kiosk Print Order". |
 | **items** | Client | List of items (name, qty, price). |
 | **total** | Client | Total amount string. |
 | **footerMessage** | Client | Custom text at bottom. |

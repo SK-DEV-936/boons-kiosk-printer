@@ -1,0 +1,28 @@
+--------- beginning of main
+02-18 05:11:43.097 D/PrinterService(25534): Service Created
+02-18 05:11:43.148 D/PrinterService(25534): WakeLock and WifiLock acquired
+02-18 05:11:43.160 D/PrinterService(25534): NanoHTTPD Server started on port 8686
+02-18 05:11:43.164 D/PrinterService(25534): Auto-Connecting to USB Printer: /dev/bus/usb/001/004
+02-18 05:11:43.168 D/PrinterService(25534): Service Started (Sticky)
+02-18 05:11:43.169 D/PrinterService(25534): Auto-Connecting to USB Printer: /dev/bus/usb/001/004
+02-18 05:14:34.140 D/PrinterServer(25534): --- ENTRY: Request Started ---
+02-18 05:14:34.141 D/PrinterServer(25534): Request: GET /health
+02-18 05:14:45.012 D/PrinterServer(25534): --- ENTRY: Request Started ---
+02-18 05:14:45.012 D/PrinterServer(25534): Request: GET /health
+02-18 05:15:15.860 D/PrinterServer(25534): --- ENTRY: Request Started ---
+02-18 05:15:15.860 D/PrinterServer(25534): Request: POST /print
+02-18 05:15:15.863 D/PrinterServer(25534): Payload: {
+02-18 05:15:15.863 D/PrinterServer(25534):     "order": {
+02-18 05:15:15.863 D/PrinterServer(25534):         "orderNumber": "REAL-123",
+02-18 05:15:15.863 D/PrinterServer(25534):         "total": "12.99",
+02-18 05:15:15.863 D/PrinterServer(25534):         "items": [
+02-18 05:15:15.863 D/PrinterServer(25534):             { "name": "Coffee", "price": "4.99" },
+02-18 05:15:15.863 D/PrinterServer(25534):             { "name": "Bagel", "price": "8.00" }
+02-18 05:15:15.863 D/PrinterServer(25534):         ]
+02-18 05:15:15.863 D/PrinterServer(25534):     }
+02-18 05:15:15.863 D/PrinterServer(25534): }
+02-18 05:15:15.863 D/PrinterServer(25534): Processing Order #REAL-123
+02-18 05:15:15.866 D/PrinterServer(25534): Checking Printer Connection for Order: true
+02-18 05:15:15.871 I/PrinterServer(25534): Order #REAL-123 Printed Successfully
+02-18 05:15:15.999 D/PrinterServer(25534): --- ENTRY: Request Started ---
+02-18 05:15:15.999 D/PrinterServer(25534): Request: GET /logs

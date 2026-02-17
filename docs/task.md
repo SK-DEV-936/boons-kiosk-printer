@@ -1,7 +1,7 @@
 # Task: Build Standalone Printer Gateway
 
 - [x] **Setup Printer Gateway Project** <!-- id: 0 -->
-    - [x] Locate `Kiosk-Printer` project
+    - [x] Locate `Kiosk Print` project
     - [x] Create `docs` folder
     - [x] Create Implementation Plan (`docs/nano_server_implementation.md`)
     - [x] Verify build (./gradlew assembleDebug)

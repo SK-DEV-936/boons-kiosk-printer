@@ -203,7 +203,7 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
                     return errorResponse("Printer not connected")
                 }
 
-                val headerMessage = order.optString("headerMessage", "      Boons Kiosk Order")
+                val headerMessage = order.optString("headerMessage", "      Kiosk Print Order")
 
                 val printer = POSPrinter(curConnect)
                 printer.initializePrinter()

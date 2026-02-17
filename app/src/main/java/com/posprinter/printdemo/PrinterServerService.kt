@@ -109,7 +109,7 @@ class PrinterServerService : Service() {
 
     private fun startForegroundService() {
         val channelId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            createNotificationChannel(CHANNEL_ID, "Printer Gateway Service")
+            createNotificationChannel(CHANNEL_ID, "Kiosk Print Gateway Service")
         } else {
             ""
         }
@@ -119,7 +119,7 @@ class PrinterServerService : Service() {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setCategory(Notification.CATEGORY_SERVICE)
-            .setContentTitle("Boons Printer Gateway")
+            .setContentTitle("Kiosk Print Gateway")
             .setContentText("Server running on port 8686 (Background Active)")
             .build()
 

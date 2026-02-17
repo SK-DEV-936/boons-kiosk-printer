@@ -1,6 +1,6 @@
-# Setup Guide: Printer Gateway
+# Setup Guide: Kiosk Print Gateway
 
-This guide covers how to set up, build, and run the `Kiosk-Printer` project with the new Printer Gateway feature.
+This guide covers how to set up, build, and run the `Kiosk Print` project with the new Printer Gateway feature.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ This guide covers how to set up, build, and run the `Kiosk-Printer` project with
 ## Installation
 
 1.  **Clone/Download the Repository**
-    Ensure you have the latest version of the `Kiosk-Printer` project.
+    Ensure you have the latest version of the `Kiosk Print` project.
 
 2.  **Open in Android Studio**
     - Launch Android Studio.
@@ -35,7 +35,7 @@ This guide covers how to set up, build, and run the `Kiosk-Printer` project with
 Once the app is running on your device:
 
 1.  **Service Startup**:
-    The service starts automatically when the app launches. You should see a persistent notification titled **"Boons Printer Gateway"** in the notification drawer.
+    The service starts automatically when the app launches. You should see a persistent notification titled **"Kiosk Print Gateway"** in the notification drawer.
 
 2.  **Verify Server Status**:
     - Open a web browser on the **same device** or a computer on the **same local network**.

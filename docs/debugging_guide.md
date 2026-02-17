@@ -1,4 +1,4 @@
-# Debugging Guide for Kiosk Printer Gateway
+# Debugging Guide for Kiosk Print Gateway
 
 If the Printer Gateway is not working on the real Kiosk device, follow these steps to capture logs and identify the issue.
 
