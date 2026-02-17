@@ -9,60 +9,92 @@ import java.io.IOException
 
 class PrinterServer(port: Int) : NanoHTTPD(port) {
 
-    private val API_KEY = "Boons_Secure_Print_Kiosk_2025!"
     private val MAX_PAYLOAD_SIZE = 2 * 1024 * 1024 // 2MB
     private val printerLock = Any()
 
     override fun serve(session: IHTTPSession): Response {
-        val uri = session.uri
-        val method = session.method
-        val headers = session.headers
+        Log.d("PrinterServer", "--- ENTRY: Request Started ---")
+        try {
+            val uri = session.uri
+            val method = session.method
+            val headers = session.headers
 
-        Log.d("PrinterServer", "Request: $method $uri")
+            Log.d("PrinterServer", "Request: $method $uri")
 
-        // CORS Preflight
-        if (Method.OPTIONS == method) {
-            val response = newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, null)
-            addCorsHeaders(response)
-            return response
-        }
-
-        // 1. Payload Size Check (Security)
-        val contentLength = headers["content-length"]?.toLongOrNull() ?: 0
-        if (contentLength > MAX_PAYLOAD_SIZE) {
-            Log.e("PrinterServer", "Payload too large: $contentLength")
-            return errorResponse("Payload too large (Max 2MB)", Response.Status.BAD_REQUEST) // 400 Bad Request
-        }
-
-        // 2. API Key Authentication (Security) for sensitive endpoints
-        if (uri == "/print") {
-            val clientKey = headers["x-api-key"] // NanoHTTPD headers are lowercase
-            if (clientKey != API_KEY) {
-                 Log.w("PrinterServer", "Unauthorized Access Attempt")
-                 return errorResponse("Unauthorized: Invalid API Key", Response.Status.UNAUTHORIZED) // 401 Unauthorized
+            // Minimal API for connectivity test
+            if ("/ping" == uri) {
+                val resp = newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "PONG")
+                addCorsHeaders(resp)
+                return resp
             }
-        }
 
-        if ("/health" == uri && Method.GET == method) {
-            val response = newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\": \"alive\"}")
-            addCorsHeaders(response)
-            return response
-        }
-
-        if ("/logs" == uri && Method.GET == method) {
-            return handleLogs(session)
-        }
-
-        if ("/print" == uri && Method.POST == method) {
-            synchronized(printerLock) { // 3. Thread Safety
-                return handlePrint(session)
+            // CORS Preflight
+            if (Method.OPTIONS == method) {
+                val response = newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, null)
+                addCorsHeaders(response)
+                return response
             }
-        }
 
-        return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found")
+            // 1. Payload Size Check (Security)
+            val contentLength = headers["content-length"]?.toLongOrNull() ?: 0
+            if (contentLength > MAX_PAYLOAD_SIZE) {
+                Log.e("PrinterServer", "Payload too large: $contentLength")
+                return errorResponse("Payload too large (Max 2MB)", Response.Status.BAD_REQUEST) // 400 Bad Request
+            }
+
+            if ("/health" == uri && Method.GET == method) {
+                val response = newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\": \"alive\"}")
+                addCorsHeaders(response)
+                return response
+            }
+
+            if ("/logs" == uri && Method.GET == method) {
+                return handleLogs(session)
+            }
+            
+            // 3. Serve Test Page (for on-device testing)
+            if ("/test" == uri && Method.GET == method) {
+                return handleTestPage()
+            }
+
+            if ("/print" == uri && Method.POST == method) {
+                synchronized(printerLock) { // 3. Thread Safety (Simple)
+                    return handlePrint(session)
+                }
+            }
+
+            return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found")
+        } catch (e: Exception) {
+            Log.e("PrinterServer", "Unhandled Server Exception", e)
+            return errorResponse("Server Internal Error: ${e.message}")
+        }
     }
 
     private val MAX_LOG_SIZE = 10 * 1024 * 1024 // 10MB limit
+
+    private fun handleTestPage(): Response {
+        try {
+            // SAFEGUARD: For Unit Testing where App.get() might crash or return null
+            val html = try {
+                val inputStream = App.get().assets.open("printer-test.html")
+                val size = inputStream.available()
+                val buffer = ByteArray(size)
+                inputStream.read(buffer)
+                inputStream.close()
+                String(buffer, java.nio.charset.Charset.forName("UTF-8"))
+            } catch (e: Exception) {
+                // Fallback for Unit Tests or missing asset
+                "<html><body><h1>Printer Test Page (Fallback)</h1></body></html>"
+            }
+            
+            val response = newFixedLengthResponse(Response.Status.OK, "text/html", html)
+            addCorsHeaders(response)
+            return response
+        } catch (e: Exception) {
+            Log.e("PrinterServer", "Failed to load test page", e)
+            return errorResponse("Failed to load test page: ${e.message}")
+        }
+    }
 
     private fun handleLogs(session: IHTTPSession): Response {
         val params = session.parms
@@ -171,29 +203,32 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
                     return errorResponse("Printer not connected")
                 }
 
+                val headerMessage = order.optString("headerMessage", "      Boons Kiosk Order")
+
                 val printer = POSPrinter(curConnect)
                 printer.initializePrinter()
                     .printString("--------------------------------\n")
-                    .printString("      Boons Kiosk Order\n")
+                    .printString("$headerMessage\n")
                     .printString("--------------------------------\n")
                     .printString("Order #: $orderNum\n")
                     .printString("Date: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(java.util.Date())}\n")
                     .printString("\n")
-                    .printString(String.format("%-20s %10s\n", "Item", "Price"))
-                    .printString("--------------------------------\n")
+                printer.printString(String.format("%-18s %4s %8s\n", "Item", "Qty", "Price"))
+                printer.printString("--------------------------------\n")
 
                 if (items != null) {
                     for (i in 0 until items.length()) {
                         val item = items.getJSONObject(i)
                         val name = item.optString("name", "Item")
+                        val qty = item.optString("qty", "1")
                         val price = item.optString("price", "0.00")
                         
-                        // Simple truncation/padding for alignment (assuming monospace font)
+                        // Truncate name to fit
                         var displayName = name
-                        if (name.length > 20) {
-                            displayName = name.substring(0, 17) + "..."
+                        if (name.length > 18) {
+                            displayName = name.substring(0, 15) + "..."
                         }
-                        printer.printString(String.format("%-20s %10s\n", displayName, price))
+                        printer.printString(String.format("%-18s %4s %8s\n", displayName, qty, price))
                     }
                 }
 
@@ -201,8 +236,11 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
                 printer.printString(String.format("%-20s %10s\n", "TOTAL", total))
                 printer.printString("--------------------------------\n")
                 printer.printString("\n")
-                printer.printString("      Thank you for your\n")
-                printer.printString("        ordering!\n")
+                
+                // Dynamic Footer Message
+                val footerMessage = order.optString("footerMessage", "      Thank you for your\n        ordering!")
+                printer.printString("$footerMessage\n")
+                
                 printer.printString("\n\n")
                 .feedLine()
                 .cutHalfAndFeed(1)
@@ -233,7 +271,7 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
     private fun addCorsHeaders(response: Response) {
         response.addHeader("Access-Control-Allow-Origin", "*")
         response.addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        response.addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-Api-Key")
+        response.addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
         response.addHeader("Access-Control-Max-Age", "86400")
     }
 }

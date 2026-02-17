@@ -11,6 +11,8 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
+import net.posprinter.POSConnect
+
 class PrinterServerService : Service() {
 
     private var server: PrinterServer? = null
@@ -24,12 +26,29 @@ class PrinterServerService : Service() {
         startForegroundService()
         acquireLocks()
         startServer()
+        connectToUSB() // Auto-connect on create
         ServiceWatchdog.schedule(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("PrinterService", "Service Started (Sticky)")
+        connectToUSB() // Auto-connect on restart
         return START_STICKY
+    }
+
+    private fun connectToUSB() {
+        try {
+            val usbNames = POSConnect.getUsbDevices(this)
+            if (usbNames.isNotEmpty()) {
+                val address = usbNames[0]
+                Log.d("PrinterService", "Auto-Connecting to USB Printer: $address")
+                App.get().connectUSB(address)
+            } else {
+                Log.d("PrinterService", "No USB Printer found to auto-connect.")
+            }
+        } catch (e: Exception) {
+            Log.e("PrinterService", "Failed to auto-connect USB", e)
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? {

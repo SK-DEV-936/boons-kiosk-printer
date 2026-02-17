@@ -68,7 +68,7 @@
 
     <div class="input-group">
         <label for="serverUrl">Gateway URL:</label>
-        <input type="text" id="serverUrl" value="http://192.168.1.164:8686" placeholder="http://192.168.1.164:8686">
+        <input type="text" id="serverUrl" value="http://127.0.0.1:8686" placeholder="http://127.0.0.1:8686">
         <div style="margin-top: 5px;"><small>Use '127.0.0.1' if running on the same device, or the IP address if
                 remote.</small></div>
     </div>
@@ -98,6 +98,8 @@ This is a test print.
         <button onclick="sendPrint()">Send Raw Print Job (/print)</button>
     </div>
 
+    <div id="result"></div>
+
     <hr>
 
     <h3>Formatted Receipt Test</h3>
@@ -106,13 +108,21 @@ This is a test print.
         <input type="text" id="orderNum" value="101">
     </div>
     <div class="input-group">
-        <button onclick="sendOrder()">Send Formatted Order (/print)</button>
+        <button onclick="sendFormattedOrder()">Send Formatted Order (/print)</button>
     </div>
 
     <div id="status">Status: Ready.</div>
 
     <script>
         const statusDiv = document.getElementById('status');
+
+        // Auto-detect if running on the gateway itself
+        window.onload = function () {
+            if (window.location.port === "8686") {
+                document.getElementById('serverUrl').value = window.location.origin;
+                log("Detected running on Gateway. URL set to " + window.location.origin, 'success');
+            }
+        }
 
         function log(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
@@ -156,11 +166,6 @@ This is a test print.
                 }
 
                 const text = await response.text();
-                if (!text) {
-                    log("Logs are empty.", 'error');
-                    return;
-                }
-
                 // Create a blob and trigger download
                 const blob = new Blob([text], { type: 'text/plain' });
                 const a = document.createElement('a');
@@ -182,34 +187,30 @@ This is a test print.
             const url = baseUrl + '/print';
             const content = document.getElementById('printContent').value;
 
-            if (!content) {
-                log("Error: Content is empty.", 'error');
-                return;
-            }
-
             log(`Sending print job to: ${url}...`, 'info');
             sendRequest(url, { content: content });
         }
 
-        async function sendOrder() {
+        async function sendFormattedOrder() {
             const baseUrl = document.getElementById('serverUrl').value;
             const url = baseUrl + '/print';
             const orderNum = document.getElementById('orderNum').value;
 
-            const orderData = {
-                order: {
-                    orderNumber: orderNum,
-                    total: "45.50",
-                    items: [
-                        { name: "Burger", price: "15.00" },
-                        { name: "Fries", price: "5.50" },
-                        { name: "Soda", price: "25.00" }
-                    ]
-                }
+            const order = {
+                orderNumber: orderNum,
+                total: "25.50",
+                headerMessage: "      My Pop-Up Store",
+                footerMessage: "      Custom Footer Message!\n       Visit us again.",
+                items: [
+                    { name: "Burger", qty: "2", price: "12.00" },
+                    { name: "Fries", qty: "1", price: "5.50" },
+                    { name: "Soda", qty: "3", price: "3.00" },
+                    { name: "Ice Cream", qty: "1", price: "5.00" }
+                ]
             };
 
             log(`Sending formatted order to: ${url}...`, 'info');
-            sendRequest(url, orderData);
+            sendRequest(url, { order: order });
         }
 
         async function sendRequest(url, payload) {
@@ -222,38 +223,6 @@ This is a test print.
                     body: JSON.stringify(payload)
                 });
 
-                const result = await response.json();
-                document.getElementById('result').innerText = JSON.stringify(result, null, 2);
-            } catch (error) {
-                document.getElementById('result').innerText = 'Error: ' + error.message;
-            }
-        }
-
-        async function sendFormattedOrder() {
-            const serverUrl = document.getElementById('serverUrl').value;
-            const order = {
-                orderNumber: "101",
-                total: "25.50",
-                headerMessage: "      My Pop-Up Store",
-                footerMessage: "      Custom Footer Message!\n       Visit us again.",
-                items: [
-                    { name: "Burger", qty: "2", price: "12.00" },
-                    { name: "Fries", qty: "1", price: "5.50" },
-                    { name: "Soda", qty: "3", price: "3.00" },
-                    { name: "Ice Cream", qty: "1", price: "5.00" }
-                ]
-            };
-
-            try {
-                const response = await fetch(`${serverUrl}/print`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Api-Key': 'Boons_Secure_Print_Kiosk_2025!'
-                    },
-                    body: JSON.stringify({ order: order })
-                });
-
                 let data;
                 try {
                     data = await response.json();
@@ -262,9 +231,9 @@ This is a test print.
                 }
 
                 if (response.ok) {
-                    log(`Success (200): ${JSON.stringify(data, null, 2)}`, 'success');
+                    log(`Success: ${JSON.stringify(data, null, 2)}`, 'success');
                 } else {
-                    log(`Failed (${response.status}): ${JSON.stringify(data, null, 2)}`, 'error');
+                    log(`Failed: ${JSON.stringify(data, null, 2)}`, 'error');
                 }
             } catch (error) {
                 log(`Network Error: ${error.message}`, 'error');

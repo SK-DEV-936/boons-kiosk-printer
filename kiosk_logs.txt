@@ -1,0 +1,17 @@
+--------- beginning of main
+02-17 05:33:06.298 D/PrinterService(16030): Service Created
+02-17 05:33:06.327 D/PrinterService(16030): WakeLock and WifiLock acquired
+02-17 05:33:06.338 D/PrinterService(16030): NanoHTTPD Server started on port 8686
+02-17 05:33:06.342 D/PrinterService(16030): Auto-Connecting to USB Printer: /dev/bus/usb/001/004
+02-17 05:33:06.346 D/PrinterService(16030): Service Started (Sticky)
+02-17 05:33:06.347 D/PrinterService(16030): Auto-Connecting to USB Printer: /dev/bus/usb/001/004
+02-17 05:33:48.440 D/PrinterServer(16030): Request: GET /health
+02-17 05:38:50.976 D/PrinterService(16266): Service Created
+02-17 05:38:50.996 D/PrinterService(16266): WakeLock and WifiLock acquired
+02-17 05:38:51.010 D/PrinterService(16266): NanoHTTPD Server started on port 8686
+02-17 05:38:51.012 D/PrinterService(16266): Auto-Connecting to USB Printer: /dev/bus/usb/001/004
+02-17 05:38:51.015 D/PrinterService(16266): Service Started (Sticky)
+02-17 05:38:51.015 D/PrinterService(16266): Auto-Connecting to USB Printer: /dev/bus/usb/001/004
+02-17 05:39:14.777 D/PrinterServer(16266): Request: GET /health
+02-17 05:40:31.060 D/PrinterServer(16266): Request: GET /health
+02-17 05:41:06.598 D/PrinterServer(16266): Request: GET /logs
