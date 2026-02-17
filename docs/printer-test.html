@@ -11,6 +11,20 @@
             padding: 20px;
             max-width: 600px;
             margin: 0 auto;
+            background-color: #f4f7f6;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
 
         .input-group {
@@ -21,43 +35,81 @@
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
+            color: #555;
         }
 
         input[type="text"],
         textarea {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             font-family: monospace;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         button {
-            padding: 10px 20px;
+            padding: 10px 15px;
             cursor: pointer;
             background-color: #007bff;
             color: white;
             border: none;
             border-radius: 4px;
+            font-weight: bold;
+            transition: background 0.2s;
         }
 
         button:hover {
             background-color: #0056b3;
         }
 
-        #status {
+        button.secondary {
+            background-color: #6c757d;
+        }
+
+        button.secondary:hover {
+            background-color: #545b62;
+        }
+
+        #status-container {
             margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            background-color: #f9f9f9;
-            min-height: 100px;
+        }
+
+        #status {
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            max-height: 300px;
+            overflow-y: auto;
             white-space: pre-wrap;
+            font-size: 13px;
+            border-radius: 4px;
         }
 
         .success {
-            color: green;
+            color: #28a745;
+            font-weight: bold;
         }
 
         .error {
-            color: red;
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .info {
+            color: #17a2b8;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid #eee;
+            margin: 20px 0;
         }
     </style>
 </head>
@@ -66,208 +118,149 @@
 
     <h1>Printer Gateway Tester</h1>
 
-    <div class="input-group">
-        <label for="serverUrl">Gateway URL:</label>
-        <input type="text" id="serverUrl" value="http://192.168.1.164:8686" placeholder="http://192.168.1.164:8686">
-        <div style="margin-top: 5px;"><small>Use '127.0.0.1' if running on the same device, or the IP address if
-                remote.</small></div>
+    <div class="card">
+        <div class="input-group">
+            <label for="serverUrl">Gateway URL (IP Address):</label>
+            <input type="text" id="serverUrl" value="http://192.168.1.164:8686" placeholder="http://192.168.1.164:8686">
+            <div style="margin-top: 5px;">
+                <small>• Use <b>http://127.0.0.1:8686</b> if testing on the tablet itself.</small><br>
+                <small>• Use <b>http://[TABLET_IP]:8686</b> if testing from a laptop.</small>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button onclick="checkHealth()">Test Connection</button>
+            <button onclick="downloadLogs()" class="secondary">Download Logs</button>
+        </div>
     </div>
 
-    <div class="input-group">
-        <button onclick="checkHealth()">Test Connection (/health)</button>
+    <div class="card">
+        <label for="printContent">Raw Content Test:</label>
+        <textarea id="printContent" rows="3">Hello from Browser!
+This is a raw text test.</textarea>
+        <div style="margin-top: 10px;">
+            <button onclick="sendRawPrint()">Print Raw Text</button>
+        </div>
     </div>
 
-    <hr>
-
-    <div class="input-group">
-        <button onclick="downloadLogs()" style="background-color: #6c757d;">Download Debug Logs</button>
-        <div style="margin-top: 5px;"><small>Captures relevant system logs for debugging.</small></div>
+    <div class="card">
+        <label for="orderNum">Structured Order Test:</label>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <input type="text" id="orderNum" value="101" style="width: 100px;">
+            <span>(Order #)</span>
+        </div>
+        <button onclick="sendFormattedOrder()">Print Receipt (Order)</button>
     </div>
 
-    <hr>
-
-    <div class="input-group">
-        <label for="printContent">Content to Print:</label>
-        <textarea id="printContent" rows="5">Hello via Browser!
-
-This is a test print.
-        </textarea>
+    <div id="status-container">
+        <label>Console & Logs:</label>
+        <div id="status">Status: Ready.</div>
     </div>
-
-    <div class="input-group">
-        <button onclick="sendPrint()">Send Raw Print Job (/print)</button>
-    </div>
-
-    <hr>
-
-    <h3>Formatted Receipt Test</h3>
-    <div class="input-group">
-        <label for="orderNum">Order #:</label>
-        <input type="text" id="orderNum" value="101">
-    </div>
-    <div class="input-group">
-        <button onclick="sendOrder()">Send Formatted Order (/print)</button>
-    </div>
-
-    <div id="status">Status: Ready.</div>
 
     <script>
         const statusDiv = document.getElementById('status');
+
+        // Auto-detect if running on the gateway itself
+        window.onload = function () {
+            if (window.location.port === "8686") {
+                document.getElementById('serverUrl').value = window.location.origin;
+                log("Detected running on Gateway. URL set to " + window.location.origin, 'success');
+            }
+        }
 
         function log(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
             console.log(`[${timestamp}] ${message}`);
 
-            let color = 'black';
-            if (type === 'success') color = 'green';
-            if (type === 'error') color = 'red';
+            let colorClass = 'info';
+            if (type === 'success') colorClass = 'success';
+            if (type === 'error') colorClass = 'error';
 
-            statusDiv.innerHTML = `<span style="color:${color}">[${timestamp}] ${message}</span>\n` + statusDiv.innerHTML;
+            const logLine = `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
+            statusDiv.innerHTML = logLine + statusDiv.innerHTML;
         }
 
         async function checkHealth() {
-            const url = document.getElementById('serverUrl').value + '/health';
+            const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
+            const url = baseUrl + '/health';
             log(`Checking health at: ${url}...`);
 
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-
                 if (response.ok) {
-                    log(`Health Check Success: ${JSON.stringify(data)}`, 'success');
+                    log(`Server ALIVE: ${JSON.stringify(data)}`, 'success');
                 } else {
-                    log(`Health Check Failed: ${response.status}`, 'error');
+                    log(`Server Error: ${response.status}`, 'error');
                 }
             } catch (error) {
-                log(`Health Check Error: ${error.message}`, 'error');
+                log(`Connection Failed: ${error.message} (Is the IP correct?)`, 'error');
             }
         }
 
         async function downloadLogs() {
-            const baseUrl = document.getElementById('serverUrl').value;
+            const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
             const url = baseUrl + '/logs';
-
-            log(`Fetching logs from: ${url}...`, 'info');
+            log(`Fetching logs from: ${url}...`);
 
             try {
                 const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch logs: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const text = await response.text();
-                if (!text) {
-                    log("Logs are empty.", 'error');
-                    return;
-                }
 
-                // Create a blob and trigger download
                 const blob = new Blob([text], { type: 'text/plain' });
                 const a = document.createElement('a');
                 a.href = window.URL.createObjectURL(blob);
-                a.download = `printer_server_logs.txt`;
-                a.style.display = 'none';
-                document.body.appendChild(a);
+                a.download = `printer_gateway_logs.txt`;
                 a.click();
-                document.body.removeChild(a);
-
-                log("Logs downloaded successfully!", 'success');
+                log("Logs downloaded successfully.", 'success');
             } catch (error) {
-                log(`Log Download Error: ${error.message}`, 'error');
+                log(`Log Retrieval Failed: ${error.message}`, 'error');
             }
         }
 
-        async function sendPrint() {
-            const baseUrl = document.getElementById('serverUrl').value;
-            const url = baseUrl + '/print';
+        async function sendRawPrint() {
             const content = document.getElementById('printContent').value;
-
-            if (!content) {
-                log("Error: Content is empty.", 'error');
-                return;
-            }
-
-            log(`Sending print job to: ${url}...`, 'info');
-            sendRequest(url, { content: content });
-        }
-
-        async function sendOrder() {
-            const baseUrl = document.getElementById('serverUrl').value;
-            const url = baseUrl + '/print';
-            const orderNum = document.getElementById('orderNum').value;
-
-            const orderData = {
-                order: {
-                    orderNumber: orderNum,
-                    total: "45.50",
-                    items: [
-                        { name: "Burger", price: "15.00" },
-                        { name: "Fries", price: "5.50" },
-                        { name: "Soda", price: "25.00" }
-                    ]
-                }
-            };
-
-            log(`Sending formatted order to: ${url}...`, 'info');
-            sendRequest(url, orderData);
-        }
-
-        async function sendRequest(url, payload) {
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-                document.getElementById('result').innerText = JSON.stringify(result, null, 2);
-            } catch (error) {
-                document.getElementById('result').innerText = 'Error: ' + error.message;
-            }
+            log(`Sending raw print job...`);
+            await sendRequest({ content: content });
         }
 
         async function sendFormattedOrder() {
-            const serverUrl = document.getElementById('serverUrl').value;
+            const orderNum = document.getElementById('orderNum').value;
             const order = {
-                orderNumber: "101",
+                orderNumber: orderNum,
                 total: "25.50",
-                headerMessage: "      My Pop-Up Store",
-                footerMessage: "      Custom Footer Message!\n       Visit us again.",
+                headerMessage: "      Boons Kiosk Test",
+                footerMessage: "      Verified from Browser!\n       Thank you.",
                 items: [
-                    { name: "Burger", qty: "2", price: "12.00" },
-                    { name: "Fries", qty: "1", price: "5.50" },
-                    { name: "Soda", qty: "3", price: "3.00" },
-                    { name: "Ice Cream", qty: "1", price: "5.00" }
+                    { name: "Double Burger", qty: "1", price: "12.00" },
+                    { name: "Large Fries", qty: "1", price: "5.50" },
+                    { name: "Coke", qty: "2", price: "4.00" }
                 ]
             };
+            log(`Sending formatted order #${orderNum}...`);
+            await sendRequest({ order: order });
+        }
+
+        async function sendRequest(payload) {
+            const baseUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
+            const url = baseUrl + '/print';
 
             try {
-                const response = await fetch(`${serverUrl}/print`, {
+                const response = await fetch(url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Api-Key': 'Boons_Secure_Print_Kiosk_2025!'
-                    },
-                    body: JSON.stringify({ order: order })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
-                let data;
-                try {
-                    data = await response.json();
-                } catch (e) {
-                    data = { error: "Failed to parse JSON response", details: e.message };
-                }
-
+                const data = await response.json();
                 if (response.ok) {
-                    log(`Success (200): ${JSON.stringify(data, null, 2)}`, 'success');
+                    log(`PRINTER SUCCESS: ${JSON.stringify(data)}`, 'success');
                 } else {
-                    log(`Failed (${response.status}): ${JSON.stringify(data, null, 2)}`, 'error');
+                    log(`PRINTER FAILED: ${JSON.stringify(data)}`, 'error');
                 }
             } catch (error) {
-                log(`Network Error: ${error.message}`, 'error');
+                log(`NETWORK ERROR: ${error.message}`, 'error');
             }
         }
     </script>
