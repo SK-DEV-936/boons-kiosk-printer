@@ -44,15 +44,21 @@ Use the `receipt` root object for a professionally formatted, branded receipt.
 ```
 
 #### Receipt Fields Detail
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `order_type` | String | Printed at the top in large 3x font (e.g., "DINE IN", "TAKE AWAY"). |
-| `order_number` | String | Printed in large 2x font. |
-| `total_items` | String | Summary of item count. |
-| `items` | Array | List of objects containing `qty`, `name`, `price`, and optional `options`. |
-| `options` | Array | (Optional) List of strings (suboptions) printed indented with bullets under an item. |
-| `order_placed_at`| String | (Optional) Timestamp printed at the bottom. |
-| `payment_status` | String | (Optional) Printed as a bold footer (e.g., "PAID", "UNPAID"). |
+| Field | Type | Description | Required |
+| :--- | :--- | :--- | :--- |
+| `order_type` | String | Large 3x title (E.g. DINE IN). | **Yes** |
+| `order_number` | String | Large 2x order ID. | **Yes** |
+| `total_items` | String | Summary count. | **Yes** |
+| `items` | Array | List of items to print. | **Yes** |
+| `qty`, `name`, `price` | String | Item specific details. | **Yes** |
+| `options` | Array | Nested list of suboptions. | No |
+| `order_placed_at`| String | Bottom timestamp. | No |
+| `payment_status` | String | "PAID" stamp footer. | No |
+
+**Handling Missing Fields:**
+The printer server is designed to be flexible. If a field marked as "Optional" (like `options`, `order_placed_at`, or `payment_status`) is missing from the JSON, it is simply **skipped**.
+- For example, if an item has no `options`, the printer will move directly to the next item without leaving extra blank space.
+- If `payment_status` is omitted, no footer status will be printed.
 
 #### Design Notes
 - **Logo**: The "Boons" brand logo is printed at the top (1.5x size).
