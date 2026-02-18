@@ -1,9 +1,11 @@
 package com.posprinter.printdemo
 
 import android.util.Log
+import android.graphics.BitmapFactory
 import fi.iki.elonen.NanoHTTPD
 import net.posprinter.POSPrinter
 import net.posprinter.POSConst
+import net.posprinter.model.PTable
 import org.json.JSONObject
 import java.io.IOException
 
@@ -246,6 +248,110 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
                 .cutHalfAndFeed(1)
 
                 Log.i("PrinterServer", "Order #$orderNum Printed Successfully")
+                val response = newFixedLengthResponse(Response.Status.OK, "application/json", "{\"success\": true}")
+                addCorsHeaders(response)
+                return response
+            }
+
+            // Handle New Custom Receipt Format
+            if (json.has("receipt")) {
+                val receipt = json.getJSONObject("receipt")
+                val orderType = receipt.optString("order_type", "")
+                val orderNum = receipt.optString("order_number", "")
+                val totalItems = receipt.optString("total_items", "")
+                val items = receipt.optJSONArray("items")
+                val orderPlacedAt = receipt.optString("order_placed_at", "")
+                val paymentStatus = receipt.optString("payment_status", "")
+
+                val curConnect = App.get().curConnect
+                val isConnected = curConnect?.isConnect ?: false
+                if (!isConnected) return errorResponse("Printer not connected")
+
+                val printer = POSPrinter(curConnect)
+                printer.initializePrinter()
+
+                // 1. Logo printing
+                try {
+                    val context = App.get()
+                    // Use ic_launcher as logo if receipt_logo doesn't exist yet
+                    val logoRes = context.resources.getIdentifier("receipt_logo", "drawable", context.packageName)
+                    val resId = if (logoRes != 0) logoRes else R.mipmap.ic_launcher
+                    
+                    val options = BitmapFactory.Options().apply { inScaled = false }
+                    val bmp = BitmapFactory.decodeResource(context.resources, resId, options)
+                    if (bmp != null) {
+                        // Increase width from 384 to 576 for exactly 1.5x size
+                        printer.printBitmap(bmp, POSConst.ALIGNMENT_CENTER, 576)
+                        printer.feedLine(3) // Extra space below logo
+                    }
+                } catch (e: Exception) {
+                    Log.e("PrinterServer", "Logo printing failed", e)
+                }
+
+                // 2. Order Metadata
+                printer.printText(orderType + "\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_3WIDTH or POSConst.TXT_3HEIGHT)
+                printer.feedLine(2) // Extra space after Order Type
+
+                printer.printText("Your order No. : $orderNum\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT)
+                printer.feedLine(2) // Extra space before separator
+
+                printer.printString("--------------------------------\n")
+                printer.printText("Total Items : $totalItems\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT)
+                printer.printString("--------------------------------\n")
+                printer.feedLine()
+
+                // 3. Items Table
+                // Adjusted to exact 32 chars: Qty (3) + 1 + Item (20) + 1 + Price (7) = 32
+                printer.printText(String.format("%-3s %-20s %7s\n", "Qty", "Item", "Price"), POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
+                printer.printString("--------------------------------\n")
+                printer.feedLine()
+                
+                if (items != null) {
+                    for (i in 0 until items.length()) {
+                        val item = items.getJSONObject(i)
+                        val qty = item.optString("qty", "")
+                        val name = item.optString("name", "")
+                        val price = item.optString("price", "")
+                        val options = item.optJSONArray("options")
+
+                        // Item name max 20 chars
+                        var displayName = name
+                        if (name.length > 20) {
+                            displayName = name.substring(0, 17) + "..."
+                        }
+                        
+                        // Use printText with FNT_BOLD to match "Order Placed" style
+                        val itemLine = String.format("%-3s %-20s %7s\n", qty, displayName, price)
+                        printer.printText(itemLine, POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
+
+                        // Print suboptions if available (keep them normal/indented for contrast)
+                        if (options != null) {
+                            for (j in 0 until options.length()) {
+                                val option = options.getString(j)
+                                // Indent: 4 spaces + * + space = 6 chars
+                                val optionLine = String.format("    * %-20s\n", option)
+                                printer.printString(optionLine)
+                            }
+                        }
+                    }
+                }
+                
+                printer.feedLine()
+                printer.printString("--------------------------------\n")
+                printer.feedLine()
+
+                // 4. Order Placed
+                printer.printText("Order Placed : $orderPlacedAt\n", POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
+                printer.feedLine(3)
+
+                // 5. Payment Status (PAID stamp)
+                if (paymentStatus.isNotEmpty()) {
+                    printer.printText(paymentStatus + "\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_3WIDTH or POSConst.TXT_3HEIGHT)
+                }
+
+                printer.feedLine(2)
+                printer.cutHalfAndFeed(1)
+
                 val response = newFixedLengthResponse(Response.Status.OK, "application/json", "{\"success\": true}")
                 addCorsHeaders(response)
                 return response

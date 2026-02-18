@@ -10,15 +10,27 @@ echo "Sending test print to Kiosk at $KIOSK_IP..."
 curl -X POST "http://$KIOSK_IP:$PORT/print" \
   -H "Content-Type: application/json" \
   -d '{
-    "order": {
-        "orderNumber": "TEST-SCRIPT",
-        "total": "12.99",
-        "headerMessage": "    Kiosk Print Test",
-        "footerMessage": "    Sent via local script",
+    "receipt": {
+        "order_type": "DINE IN",
+        "order_number": "E64",
+        "total_items": "4",
         "items": [
-            { "name": "Coffee", "qty": "1", "price": "4.99" },
-            { "name": "Bagel", "qty": "1", "price": "8.00" }
-        ]
+            { 
+                "qty": "2", 
+                "name": "Double Cheeseburger", 
+                "price": "$18.00",
+                "options": ["Extra Cheese", "Well Done", "No Onion"]
+            },
+            { "qty": "1", "name": "Large Fries", "price": "$4.50" },
+            { 
+                "qty": "1", 
+                "name": "Strawberry Shake", 
+                "price": "$5.99",
+                "options": ["Whipped Cream"]
+            }
+        ],
+        "order_placed_at": "2026-02-17 15:22",
+        "payment_status": "PAID"
     }
 }'
 

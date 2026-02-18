@@ -55,16 +55,22 @@ Verifies that the server is running and reachable.
     }
     ```
 
-### **2. Print Content**
-Sends raw text content to be printed.
+### **2. Print Order (Legacy)**
+Sends a structured order to be printed. Preferred for simple text-based receipts.
 
 *   **Endpoint**: `POST /print`
-*   **Content-Type**: `application/json`
-*   **Body**:
+*   **Body Example**:
     ```json
-    {
-      "content": "Hello, World!\nThis is a test print.\n"
-    }
+    { "order": { "orderNumber": "123", "items": [...] } }
+    ```
+
+### **3. Print Receipt (Recommended)**
+Sends a highly structured payload for a professionally styled receipt. Includes support for the bundled Boons logo and formatted metadata.
+
+*   **Endpoint**: `POST /print`
+*   **Body Example**:
+    ```json
+    { "receipt": { "order_number": "4220", "items": [...], "payment_status": "PAID" } }
     ```
 *   **Response (Success)**:
     ```json
@@ -89,5 +95,5 @@ Sends raw text content to be printed.
 *   **`MainActivity.kt`**: Added logic to start the service on app startup.
 
 ### **Next Steps**
-1.  **Testing**: Verify the endpoints using the provided Postman collection or a browser.
-2.  **Client Integration**: Update the client application (React Native) to send HTTP requests to `http://localhost:8686/print`.
+1.  **Client Integration**: Update the client application (React Native) to use the new `receipt` JSON format for professional outputs.
+2.  **IP Recovery**: Always use the `/health` endpoint or the on-device notification to verify the tablet's current LAN IP before sending print jobs.
