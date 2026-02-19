@@ -37,8 +37,10 @@ Use the `receipt` root object for a professionally formatted, branded receipt.
         "options": ["Whipped Cream"]
       }
     ],
+    "total": "26.50",
     "order_placed_at": "2026-02-17 16:55",
-    "payment_status": "PAID"
+    "payment_status": "PAID",
+    "instructions": "Extra spicy please!"
   }
 }
 ```
@@ -48,12 +50,10 @@ Use the `receipt` root object for a professionally formatted, branded receipt.
 | :--- | :--- | :--- | :--- |
 | `order_type` | String | Large 3x title (E.g. DINE IN). | **Yes** |
 | `order_number` | String | Large 2x order ID. | **Yes** |
-| `total_items` | String | Summary count. | **Yes** |
-| `items` | Array | List of items to print. | **Yes** |
-| `qty`, `name`, `price` | String | Item specific details. | **Yes** |
-| `options` | Array | Nested list of suboptions. | No |
+| `total` | String | Final price at bottom of items. | **Yes** |
 | `order_placed_at`| String | Bottom timestamp. | No |
 | `payment_status` | String | "PAID" stamp footer. | No |
+| `instructions` | String | Special customer request. | No |
 
 **Handling Missing Fields:**
 The printer server is designed to be flexible. If a field marked as "Optional" (like `options`, `order_placed_at`, or `payment_status`) is missing from the JSON, it is simply **skipped**.

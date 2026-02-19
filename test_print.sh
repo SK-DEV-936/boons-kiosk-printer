@@ -11,25 +11,48 @@ curl -X POST "http://$KIOSK_IP:$PORT/print" \
   -H "Content-Type: application/json" \
   -d '{
     "receipt": {
-        "order_type": "DINE IN",
-        "order_number": "E64",
-        "total_items": "4",
+        "order_type": "Dine-In",
+        "order_number": "E35",
+        "total_items": "7",
+        "subtotal": "44.00",
+        "tip": "5.00",
+        "tax": "6.00",
+        "total": "55.00",
         "items": [
             { 
-                "qty": "2", 
-                "name": "Double Cheeseburger", 
-                "price": "$18.00",
-                "options": ["Extra Cheese", "Well Done", "No Onion"]
+                "qty": "1", 
+                "name": "Classic Burger", 
+                "price": "12.00",
+                "options": [
+                    {
+                        "name": "Add-ons",
+                        "sub_options": ["Extra Cheese", "Bacon"]
+                    },
+                    "No Onions"
+                ]
             },
-            { "qty": "1", "name": "Large Fries", "price": "$4.50" },
             { 
                 "qty": "1", 
-                "name": "Strawberry Shake", 
-                "price": "$5.99",
-                "options": ["Whipped Cream"]
-            }
+                "name": "Custom Pizza", 
+                "price": "16.50",
+                "options": [
+                    {
+                        "name": "Toppings",
+                        "sub_options": ["Pepperoni", "Mushrooms"]
+                    },
+                    {
+                        "name": "Crust",
+                        "sub_options": ["Thin Crust"]
+                    }
+                ]
+            },
+            { "qty": "1", "name": "French Fries", "price": "4.50" },
+            { "qty": "1", "name": "Onion Rings", "price": "5.50" },
+            { "qty": "2", "name": "Soft Drinks", "price": "6.00" },
+            { "qty": "1", "name": "Ice Cream", "price": "4.00" },
+            { "qty": "1", "name": "Brownie", "price": "6.50" }
         ],
-        "order_placed_at": "2026-02-17 15:22",
+        "order_placed_at": "Feb 18, 3:10 PM",
         "payment_status": "PAID"
     }
 }'

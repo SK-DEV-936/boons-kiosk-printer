@@ -262,6 +262,10 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
                 val items = receipt.optJSONArray("items")
                 val orderPlacedAt = receipt.optString("order_placed_at", "")
                 val paymentStatus = receipt.optString("payment_status", "")
+                val subtotal = receipt.optString("subtotal", "")
+                val tip = receipt.optString("tip", "")
+                val tax = receipt.optString("tax", "")
+                val totalPrice = receipt.optString("total", "0.00")
 
                 val curConnect = App.get().curConnect
                 val isConnected = curConnect?.isConnect ?: false
@@ -288,22 +292,28 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
                     Log.e("PrinterServer", "Logo printing failed", e)
                 }
 
-                // 2. Order Metadata
-                printer.printText(orderType + "\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_3WIDTH or POSConst.TXT_3HEIGHT)
-                printer.feedLine(2) // Extra space after Order Type
+                // 1. Order Type (Header)
+                printer.printText(orderType + "\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT)
+                printer.feedLine()
+                
+                // Simplified Order Number (Horizontal separators only)
+                printer.printText("------------------------------------------------\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_DEFAULT, POSConst.TXT_1WIDTH)
+                printer.printText("Your Order Number\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT)
+                printer.feedLine()
+                printer.printText(orderNum + "\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT)
+                printer.printText("------------------------------------------------\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_DEFAULT, POSConst.TXT_1WIDTH)
+                printer.feedLine()
 
-                printer.printText("Your order No. : $orderNum\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT)
-                printer.feedLine(2) // Extra space before separator
-
-                printer.printString("--------------------------------\n")
-                printer.printText("Total Items : $totalItems\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT)
-                printer.printString("--------------------------------\n")
+                // Total Items (Left aligned, 2x size)
+                printer.printText("Total Items : $totalItems\n", POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT)
+                printer.printText("------------------------------------------------\n", POSConst.ALIGNMENT_LEFT, POSConst.FNT_DEFAULT, POSConst.TXT_1WIDTH)
                 printer.feedLine()
 
                 // 3. Items Table
-                // Adjusted to exact 32 chars: Qty (3) + 1 + Item (20) + 1 + Price (7) = 32
-                printer.printText(String.format("%-3s %-20s %7s\n", "Qty", "Item", "Price"), POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
-                printer.printString("--------------------------------\n")
+                // Header: Standard Bold Font to prevent wrapping and match user preference
+                // Layout: Qty(4) + Item(30) + Price(12) + 2 spaces = 48 chars
+                printer.printText(String.format("%-4s %-30s %12s\n", "Qty", "Item", "Price"), POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
+                printer.printText("------------------------------------------------\n", POSConst.ALIGNMENT_LEFT, POSConst.FNT_DEFAULT, POSConst.TXT_1WIDTH)
                 printer.feedLine()
                 
                 if (items != null) {
@@ -314,39 +324,83 @@ class PrinterServer(port: Int) : NanoHTTPD(port) {
                         val price = item.optString("price", "")
                         val options = item.optJSONArray("options")
 
-                        // Item name max 20 chars
+                        // Item name max 30 chars for TXT_1WIDTH layout (48 char total)
                         var displayName = name
-                        if (name.length > 20) {
-                            displayName = name.substring(0, 17) + "..."
+                        if (name.length > 30) {
+                            displayName = name.substring(0, 27) + "..."
                         }
                         
-                        // Use printText with FNT_BOLD to match "Order Placed" style
-                        val itemLine = String.format("%-3s %-20s %7s\n", qty, displayName, price)
+                        // Use Standard Bold Font for items
+                        val itemLine = String.format("%-4s %-30s %12s\n", qty, displayName, price)
                         printer.printText(itemLine, POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
 
-                        // Print suboptions if available (keep them normal/indented for contrast)
-                        if (options != null) {
+                        // Print options and sub-options
+                        if (options != null && options.length() > 0) {
+                            // Add a little vertical spacing between item and options
+                            printer.printString("\n") 
+                            
                             for (j in 0 until options.length()) {
-                                val option = options.getString(j)
-                                // Indent: 4 spaces + * + space = 6 chars
-                                val optionLine = String.format("    * %-20s\n", option)
-                                printer.printString(optionLine)
+                                val optionObj = options.get(j)
+                                if (optionObj is String) {
+                                    // Indent 2 spaces + * + space = 4 chars
+                                    val optionLine = String.format("  * %-20s\n", optionObj)
+                                    printer.printString(optionLine)
+                                } else if (optionObj is JSONObject) {
+                                    val optName = optionObj.optString("name", "")
+                                    val subOptions = optionObj.optJSONArray("sub_options")
+                                    
+                                    val optionLine = String.format("  * %-20s\n", optName)
+                                    printer.printString(optionLine)
+                                    
+                                    if (subOptions != null) {
+                                        for (k in 0 until subOptions.length()) {
+                                            val subOpt = subOptions.getString(k)
+                                            // Indent 4 spaces + - + space = 6 chars
+                                            val subOptLine = String.format("    - %-18s\n", subOpt)
+                                            printer.printString(subOptLine)
+                                        }
+                                    }
+                                }
                             }
                         }
+                        
+                        // Add 15-20% more spacing between items
+                        printer.feedLine() 
                     }
                 }
                 
-                printer.feedLine()
-                printer.printString("--------------------------------\n")
+                printer.printText("------------------------------------------------\n", POSConst.ALIGNMENT_LEFT, POSConst.FNT_DEFAULT, POSConst.TXT_1WIDTH)
+                
+                // Summary Section (Subtotal, Tip, Tax) in Standard Bold
+                if (subtotal.isNotEmpty()) {
+                    val line = String.format("%-34s %12s\n", "Subtotal", subtotal)
+                    printer.printText(line, POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
+                }
+                if (tip.isNotEmpty()) {
+                    val line = String.format("%-34s %12s\n", "Tip", tip)
+                    printer.printText(line, POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
+                }
+                if (tax.isNotEmpty()) {
+                    val line = String.format("%-34s %12s\n", "Tax & Fees", tax)
+                    printer.printText(line, POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
+                }
+                
+                printer.printText("------------------------------------------------\n", POSConst.ALIGNMENT_LEFT, POSConst.FNT_DEFAULT, POSConst.TXT_1WIDTH)
                 printer.feedLine()
 
-                // 4. Order Placed
-                printer.printText("Order Placed : $orderPlacedAt\n", POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
+                // Total Price Row (Standard Bold matching items)
+                val totalLine = String.format("%-4s %-30s %12s\n", "", "TOTAL", totalPrice)
+                printer.printText(totalLine, POSConst.ALIGNMENT_LEFT, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
+                printer.printText("------------------------------------------------\n", POSConst.ALIGNMENT_LEFT, POSConst.FNT_DEFAULT, POSConst.TXT_1WIDTH)
+                printer.feedLine()
+                
+                // 5. Order Placed
+                printer.printText("Order Placed : $orderPlacedAt\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_1WIDTH)
                 printer.feedLine(3)
 
                 // 5. Payment Status (PAID stamp)
                 if (paymentStatus.isNotEmpty()) {
-                    printer.printText(paymentStatus + "\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_3WIDTH or POSConst.TXT_3HEIGHT)
+                    printer.printText(paymentStatus + "\n", POSConst.ALIGNMENT_CENTER, POSConst.FNT_BOLD, POSConst.TXT_2WIDTH or POSConst.TXT_2HEIGHT)
                 }
 
                 printer.feedLine(2)
